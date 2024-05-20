@@ -1,0 +1,86 @@
+
+metadata {
+    definition(name: "Xfinity MCT-350 Zigbee Contact Sensor", namespace: "almulder", author: "Albert Mulder") {
+        capability "Contact Sensor"
+        capability "Battery"
+        capability "Configuration"
+        capability "Refresh"
+        capability "Tamper Alert"
+
+        fingerprint profileId: "0104", deviceId: "0107", inClusters: "0000,0001,0500", outClusters: "0019", model: "URC4460BC0-X-R"
+    }
+
+    preferences {
+        input name: "debugLogging", type: "bool", title: "Enable debug logging", defaultValue: true
+    }
+}
+
+def parse(String description) {
+    if (debugLogging) log.debug "Parsing message: $description"
+    
+    def event = zigbee.getEvent(description)
+    if (event) {
+        if (debugLogging) log.debug "Parsed event: $event"
+        sendEvent(event)
+    } else {
+        if (description?.startsWith("zone status")) {
+            def status = zigbee.parseZoneStatus(description)
+            if (status.isAlarm1Set()) {
+                if (debugLogging) log.debug "Contact state: open"
+                sendEvent(name: "contact", value: "open")
+            } else {
+                if (debugLogging) log.debug "Contact state: closed"
+                sendEvent(name: "contact", value: "closed")
+            }
+            if (status.isTamperSet()) {
+                if (debugLogging) log.debug "Tamper state: detected"
+                sendEvent(name: "tamper", value: "detected")
+            } else {
+                if (debugLogging) log.debug "Tamper state: clear"
+                sendEvent(name: "tamper", value: "clear")
+            }
+        } else {
+            def map = zigbee.parseDescriptionAsMap(description)
+            if (debugLogging) log.debug "Parsed map: $map"
+
+            if (map.clusterInt == 0x0500 && map.attrInt == 0x0002) {
+                def contactState = map.value == "01" ? "open" : "closed"
+                if (debugLogging) log.debug "Contact state: $contactState"
+                sendEvent(name: "contact", value: contactState)
+            } else if (map.clusterInt == 0x0001 && map.attrInt == 0x0020) {
+                def batteryLevel = Integer.parseInt(map.value, 16)
+                if (debugLogging) log.debug "Battery level: $batteryLevel"
+                sendEvent(name: "battery", value: batteryLevel)
+            }
+        }
+    }
+}
+
+def installed() {
+    if (debugLogging) log.debug "Installed"
+    configure()
+}
+
+def updated() {
+    if (debugLogging) log.debug "Updated"
+    configure()
+}
+
+def configure() {
+    if (debugLogging) log.debug "Configuring"
+    def configCmds = []
+    configCmds += zigbee.configureReporting(0x0500, 0x0002, 0x18, 10, 600, null)
+    configCmds += zigbee.configureReporting(0x0001, 0x0020, 0x20, 30, 21600, 0x01)
+    configCmds += zigbee.enrollResponse()
+    configCmds += zigbee.readAttribute(0x0001, 0x0020)
+    configCmds += zigbee.readAttribute(0x0500, 0x0002)
+    return configCmds
+}
+
+def refresh() {
+    if (debugLogging) log.debug "Refreshing"
+    def refreshCmds = []
+    refreshCmds += zigbee.readAttribute(0x0001, 0x0020)
+    refreshCmds += zigbee.readAttribute(0x0500, 0x0002)
+    return refreshCmds
+}
