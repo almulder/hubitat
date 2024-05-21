@@ -12,9 +12,6 @@ metadata {
 
     preferences {
         input name: "debugLogging", type: "bool", title: "Enable debug logging", defaultValue: true
-        input name: "checkBattery", type: "button", title: "Check Battery Level"
-        input name: "checkTamperStatus", type: "button", title: "Check Tamper Status"
-        input name: "checkTemperature", type: "button", title: "Check Temperature"
     }
 }
 
