@@ -7,6 +7,8 @@ metadata {
         capability "Tamper Alert"
         capability "Temperature Measurement"
 
+        attribute "powerStatus", "enum", ["off", "on"]
+
         fingerprint profileId: "0104", deviceId: "0107", inClusters: "0000,0001,0003,0020,0402,0500,0B05", outClusters: "0019", model: "URC4460BC0-X-R", manufacturer: "Universal Electronics Inc"
     }
 
