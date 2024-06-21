@@ -39,7 +39,7 @@ metadata {
     }
 
     preferences {
-        input("errMsg", "hidden", title:"<b>Note:</b> Possible doorStatus:",description:"opened, opening, manually opened <br> closed, closing, manualy closed")           
+        input("errMsg", "hidden", title:"<b>Note:</b> Possible doorStatus:",description:"opened, opening, manually opened <br> closed, closing, manually closed")           
         input name: "doorTimeout", type: "number", title: "Time needed to Open/Close Door (seconds)", description: "How long does the door take to open or close?", defaultValue: DEFAULT_DOOR_TIMEOUT, required: true
         input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: true
         input name: "txtEnable", type: "bool", title: "Enable descriptionText logging", defaultValue: true
