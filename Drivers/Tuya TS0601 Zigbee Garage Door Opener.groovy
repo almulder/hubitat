@@ -1,5 +1,7 @@
 /**
-*  Zigbee TS0601 Garage Door Opener
+*  Tuya TS0601 Zigbee Garage Door Opener
+*  (This is the one that uses a wired contact and plugs into mains power (No Battery))
+*  (https://www.aliexpress.us/item/3256805221929910.html)
 *
 *  Could not locate a good driver, so needed to make one. 
 *
@@ -22,7 +24,7 @@ import groovy.transform.Field
 @Field static final int DEFAULT_DOOR_TIMEOUT = 30
 
 metadata {
-    definition(name: "Zigbee TS0601 Garage Door Opener", namespace: "almulder", author: "Albert MulderyourName") {
+    definition(name: "Tuya TS0601 Zigbee Garage Door Opener", namespace: "almulder", author: "Albert MulderyourName") {
         capability "Configuration"
         capability "Refresh"
         capability "ContactSensor"
