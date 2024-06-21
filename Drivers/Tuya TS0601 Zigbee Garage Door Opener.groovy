@@ -24,7 +24,7 @@ import groovy.transform.Field
 @Field static final int DEFAULT_DOOR_TIMEOUT = 30
 
 metadata {
-    definition(name: "Tuya TS0601 Zigbee Garage Door Opener", namespace: "almulder", author: "Albert MulderyourName") {
+    definition(name: "Tuya TS0601 Zigbee Garage Door Opener", namespace: "almulder", author: "Albert Mulder") {
         capability "Configuration"
         capability "Refresh"
         capability "ContactSensor"
