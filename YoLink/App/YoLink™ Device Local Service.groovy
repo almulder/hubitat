@@ -60,18 +60,12 @@ def about() {
             paragraph blueTitle("The app is neither developed, endorsed, or associated with YoLink™ or YoSmart, Inc." + 
             "</br>Provided 'AS IS', without warranties or conditions of any kind, either expressed or implied.") 
             paragraph boldTitle ("")
-            //paragraph "Refer to the Hubitat Community Discussion for the latest information and installation help."
-            paragraph boldTitle ("")
-            //paragraph ""                 
+            paragraph boldTitle ("")               
             paragraph ""                
             paragraph "     I want to give a huge thank you to <b>Steven Barcus</b> for his incredible work on the Cloud version. This app and these drivers simply wouldn’t exist without the foundation he built. In fact, <b>Steven Barcus</b> is the reason I first became involved in the Yolink™ ecosystem."
  			paragraph ""    
 			paragraph "     I created these drivers and the app for the local hub out of necessity—since no one else was developing local API drivers for the new hub. With the help of AI, I was able to bring them to life, but it all started with the groundwork that <b>Steven Barcus</b> had already laid."
-            //paragraph "Please go donate to him for the support the development he help create."
-            //href url:"https://www.paypal.com/donate/?business=HHRCLVYHR4X5J&no_recurring=1&currency_code=USD", title:"Make a Paypal donation to Albert Mulder..."
-            paragraph boldTitle (copyright()) 
-            //paragraph ""     
-            //paragraph ""     
+            paragraph boldTitle (copyright())  
             paragraph ""     
             paragraph boldRedTitle ("WARNING: Removing this application will delete all the Yolink™ devices in Hubitat that were created by this app!")
         }
