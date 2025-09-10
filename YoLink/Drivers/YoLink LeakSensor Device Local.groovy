@@ -220,22 +220,28 @@ def processStateData(String payload) {
         Map data = (dataRaw instanceof Map) ? dataRaw : [ state: (dataRaw?.toString()) ]
         Map lora = (data?.loraInfo instanceof Map) ? (Map) data.loraInfo : [:]
 
+        // 👇 KEY LINE: make a Map view of state, even if the raw is a String
+        Map stateMap = (data?.state instanceof Map) ? (Map) data.state
+                        : (data?.state instanceof String ? [state: data.state] : [:])
+
         String eventType = (root?.event ?: "").replace("${state.type}.", "")
 
-        String rawState   = (data?.state instanceof String) ? data.state : data?.state?.state
+        String rawState   = (stateMap?.state instanceof String) ? stateMap.state : (data?.state instanceof String ? data.state : null)
         String waterState = (rawState == "alert") ? "wet" : "dry"
         String swState    = (waterState == "wet") ? "on" : "off"
 
-        Integer batt4   = (data?.battery != null) ? (data.battery as Integer) : (data?.state?.battery as Integer)
+        Integer batt4   = (data?.battery != null) ? (data.battery as Integer)
+                          : (stateMap?.battery != null ? (stateMap.battery as Integer) : null)
         Integer battery = (batt4 != null) ? parent?.batterylevel(batt4 as String) : null
 
-        String fw       = (data?.version ?: data?.state?.version)?.toUpperCase()
-        String bType    = (data?.batteryType ?: data?.state?.batteryType)
-        def    devTempC = (data?.devTemperature != null) ? data.devTemperature : data?.state?.devTemperature
-        def    supportChange = (data?.supportChangeMode != null) ? data.supportChangeMode : data?.state?.supportChangeMode
+        String fw       = ((data?.version ?: stateMap?.version) ?: "").toString()?.toUpperCase()
+        String bType    = (data?.batteryType != null) ? data.batteryType?.toString()
+                          : (stateMap?.batteryType != null ? stateMap.batteryType?.toString() : null)
+        def    devTempC = (data?.devTemperature != null) ? data.devTemperature : stateMap?.devTemperature
+        def    supportChange = (data?.supportChangeMode != null) ? data.supportChangeMode : stateMap?.supportChangeMode
 
-        def reportAt  = data?.reportAt
-        def changedAt = data?.stateChangedAt
+        def reportAt  = data?.reportAt ?: stateMap?.reportAt
+        def changedAt = data?.stateChangedAt ?: stateMap?.stateChangedAt
 
         def signal     = lora?.signal
         def gatewayId  = lora?.gatewayId
@@ -273,6 +279,7 @@ def processStateData(String payload) {
         lastResponse("MQTT Exception")
     }
 }
+
 
 
 /* ============================== Utilities ============================= */
