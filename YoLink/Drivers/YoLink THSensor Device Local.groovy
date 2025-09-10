@@ -2,12 +2,13 @@
  *  YoLink™ THSensor Device (Local API Edition)
  *  © 2025 Albert Mulder
  *
+ *  1.1.1 - Harden the beginning of processStateData(String payload) to coerce/guard data and loraInfo before dereferencing.
  *  1.1.0 - Initial working driver
  */
 
 import groovy.json.JsonSlurper
 
-def clientVersion() { return "1.1.0-THS-local" }
+def clientVersion() { return "1.1.1-THS-local" }
 def copyright()     { return "© 2025 Albert Mulder" }
 def bold(t)         { return "<strong>$t</strong>" }
 def driverName()    { return "YoLink™ THSensor (Local API Edition)"}
@@ -255,8 +256,11 @@ def processStateData(String payload) {
         if (!root?.deviceId || state.devId != root.deviceId) return
         rememberState("online", "true")
 
-        def data = root?.data ?: [:]
-        def lora = data?.loraInfo ?: [:]
+        // Normalize data/lora
+        def dataRaw = root?.data
+        Map data = (dataRaw instanceof Map) ? dataRaw : [ state: (dataRaw?.toString()) ]
+        Map lora = (data?.loraInfo instanceof Map) ? (Map) data.loraInfo : [:]
+
         String fw = (data?.version ?: data?.state?.version)?.toUpperCase()
 
         def tempC      = (data?.temperature != null) ? data.temperature : data?.state?.temperature
@@ -265,7 +269,7 @@ def processStateData(String payload) {
         def batteryPct = parent?.batterylevel(battery4)
 
         String stateStr = (data?.state instanceof String) ? data.state : data?.state?.state
-        def alarm      = data?.alarm ?: [:]
+        def alarm      = (data?.alarm instanceof Map) ? data.alarm : [:]
 
         String mode      = data?.mode
         Integer interval = data?.interval as Integer
@@ -285,10 +289,7 @@ def processStateData(String payload) {
         def reportAt  = data?.reportAt
         def changedAt = data?.stateChangedAt
 
-        if (tempC != null) {
-            def temp = convertCToPreferred(tempC)
-            sendEvent(name: "temperature", value: temp, unit: activeScale(), isStateChange: true)
-        }
+        if (tempC != null)  sendEvent(name: "temperature", value: convertCToPreferred(tempC), unit: activeScale(), isStateChange: true)
         if (humidity != null) sendEvent(name: "humidity", value: humidity, unit: "%", isStateChange: true)
         if (batteryPct != null) rememberBatteryState(batteryPct as int, false)
         if (fw) rememberState("firmware", fw)
@@ -314,12 +315,12 @@ def processStateData(String payload) {
             period      : alarm?.period
         ]
         rememberState("alarmCode", aCode)
-        rememberState("alarmLowBattery",  toStr(flags.lowBattery))
-        rememberState("alarmLowTemp",     toStr(flags.lowTemp))
-        rememberState("alarmHighTemp",    toStr(flags.highTemp))
-        rememberState("alarmLowHumidity", toStr(flags.lowHumidity))
-        rememberState("alarmHighHumidity",toStr(flags.highHumidity))
-        rememberState("alarmPeriod",      toStr(flags.period))
+        rememberState("alarmLowBattery",  (flags.lowBattery  == null) ? "" : flags.lowBattery.toString())
+        rememberState("alarmLowTemp",     (flags.lowTemp     == null) ? "" : flags.lowTemp.toString())
+        rememberState("alarmHighTemp",    (flags.highTemp    == null) ? "" : flags.highTemp.toString())
+        rememberState("alarmLowHumidity", (flags.lowHumidity == null) ? "" : flags.lowHumidity.toString())
+        rememberState("alarmHighHumidity",(flags.highHumidity== null) ? "" : flags.highHumidity.toString())
+        rememberState("alarmPeriod",      (flags.period      == null) ? "" : flags.period.toString())
         rememberState("alarmSummary", summarizeAlarms(flags))
 
         if (devNet) rememberState("loraDevNetType", devNet)
@@ -327,7 +328,7 @@ def processStateData(String payload) {
         if (gateways != null) rememberState("gateways", gateways as int)
         if (gatewayId != null) rememberState("gatewayId", gatewayId)
 
-        if (reportAt) rememberState("reportAt", fmtTs(reportAt))
+        if (reportAt)  rememberState("reportAt", fmtTs(reportAt))
         if (changedAt) rememberState("stateChangedAt", fmtTs(changedAt))
 
         lastResponse("MQTT Success")
@@ -336,6 +337,7 @@ def processStateData(String payload) {
         lastResponse("MQTT Exception")
     }
 }
+
 
 /* ============================== Utilities ============================= */
 def reset() {
