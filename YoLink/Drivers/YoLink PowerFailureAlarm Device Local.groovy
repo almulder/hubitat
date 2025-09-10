@@ -2,11 +2,12 @@
  *  YoLink™ Power Failure Alarm (Local API Edition)
  *  © 2025 Albert Mulder
  *
+ *  1.1.1 - Harden the beginning of processStateData(String payload) to coerce/guard data and loraInfo before dereferencing.
  *  1.1.0 - Initial working driver
  */
 import groovy.json.JsonSlurper
 
-def clientVersion() { "1.1.0-PFA-local" }
+def clientVersion() { "1.1.1-PFA-local" }
 def copyright()     { "© 2025 Albert Mulder" }
 def driverName()    { "YoLink™ Power Failure Alarm (Local API Edition)" }
 
@@ -173,8 +174,11 @@ def processStateData(String payload) {
         if (state?.devId && root?.deviceId && state.devId != root.deviceId) return
         rememberState("online", "true")
 
-        def data = root?.data ?: [:]
-        def st   = (data?.state instanceof Map) ? data.state : data
+        // Normalize data/lora
+        def dataRaw = root?.data
+        Map data = (dataRaw instanceof Map) ? dataRaw : [ state: (dataRaw?.toString()) ]
+        Map st   = (data?.state instanceof Map) ? (Map) data.state : data
+        Map lora = (data?.loraInfo instanceof Map) ? (Map) data.loraInfo : [:]
 
         String  rawState  = st?.state
         String  alertType = st?.alertType
@@ -187,7 +191,7 @@ def processStateData(String payload) {
         def     changedAt = st?.stateChangedAt
 
         Integer batteryPct = Math.min(100, Math.max(0, batt4 * 25))
-        boolean outage = (rawState == "alert") || (supply == false)
+        boolean outage  = (rawState == "alert") || (supply == false)
         String  powerSrc = outage ? "battery" : "mains"
         String  swState  = outage ? "on" : "off"
 
@@ -206,6 +210,7 @@ def processStateData(String payload) {
         log.warn "PFA processStateData error: ${e}"
     }
 }
+
 
 /* ============================== Utilities ============================= */
 def reset() {
