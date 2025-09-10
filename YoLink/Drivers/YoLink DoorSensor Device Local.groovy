@@ -2,11 +2,12 @@
  *  YoLink™ Door Sensor (Local API Edition)
  *  © 2025 Albert Mulder
  *
+ *  1.1.1 - Harden the beginning of processStateData(String payload) to coerce/guard data and loraInfo before dereferencing.
  *  1.1.0 - Initial working driver
  */
 import groovy.json.JsonSlurper
 
-def clientVersion() { "1.1.0-DS-local" }
+def clientVersion() { "1.1.1-DS-local" }
 def copyright()     { "© 2025 Albert Mulder" }
 def driverName()    { "YoLink™ Door Sensor (Local API Edition)" }
 
@@ -201,38 +202,45 @@ def processStateData(String payload) {
         rememberState("online", "true")
 
         String eventType = (root?.event ?: "").replace("${state.type}.", "")
-        def data = root?.data ?: [:]
-        def lora = data?.loraInfo ?: [:]
 
-        String rawState    = (data?.state instanceof String) ? data.state : data?.state?.state
-        String contact     = normalizeContact(rawState)
-        String swState     = (contact == "closed") ? "on" : "off"
+        // ⬇️ Make 'data' a Map no matter what came in
+        def dataRaw = root?.data
+        Map data = (dataRaw instanceof Map) ? dataRaw : [ state: (dataRaw?.toString()) ]
 
-        Integer batt4      = (data?.battery != null) ? (data.battery as Integer)
-                              : (data?.state?.battery as Integer)
+        // Guard loraInfo the same way
+        Map lora = (data?.loraInfo instanceof Map) ? data.loraInfo : [:]
+
+        String rawState = (data?.state instanceof String) ? data.state : data?.state?.state
+        String contact  = normalizeContact(rawState)
+        String swState  = (contact == "closed") ? "on" : "off"
+
+        Integer batt4 = (data?.battery != null) ? (data.battery as Integer)
+                        : (data?.state instanceof Map ? (data.state.battery as Integer) : null)
         Integer batteryPct = (batt4 != null) ? parent?.batterylevel(batt4 as String) : null
 
-        String  fw         = (data?.version ?: data?.state?.version)?.toUpperCase()
-        String  bType      = (data?.batteryType ?: data?.state?.batteryType)
-        def     openRemind = (data?.openRemindDelay != null) ? data.openRemindDelay
-                              : data?.state?.openRemindDelay
-        def     devTempC   = (data?.devTemperature != null) ? data.devTemperature
-                              : data?.state?.devTemperature
+        String fw    = ((data?.version) ?: (data?.state instanceof Map ? data.state.version : null))?.toUpperCase()
+        String bType = (data instanceof Map ? data.batteryType : null) ?:
+                       (data?.state instanceof Map ? data.state.batteryType : null)
 
-        def reportAt       = data?.reportAt
-        def changedAt      = data?.stateChangedAt
+        def openRemind = (data?.openRemindDelay != null) ? data.openRemindDelay
+                         : (data?.state instanceof Map ? data.state.openRemindDelay : null)
+        def devTempC   = (data?.devTemperature != null) ? data.devTemperature
+                         : (data?.state instanceof Map ? data.state.devTemperature : null)
 
-        def signal         = lora?.signal
-        def gateways       = lora?.gateways
-        String gatewayId   = lora?.gatewayId
-        String devNetType  = lora?.devNetType
+        def reportAt  = data?.reportAt
+        def changedAt = data?.stateChangedAt
+
+        def signal       = lora?.signal
+        def gateways     = lora?.gateways
+        String gatewayId = lora?.gatewayId
+        String devNetType= lora?.devNetType
 
         rememberState("state", rawState)
         rememberState("contact", contact)
         rememberState("switch", swState)
 
         if (batteryPct != null) rememberBatteryState(batteryPct as int, (eventType == "Alert"))
-        if (fw) rememberState("firmware", fw)
+        if (fw)    rememberState("firmware", fw)
         if (bType) rememberState("batteryType", bType)
         if (openRemind != null) rememberState("openRemindDelay", openRemind?.toString())
 
@@ -255,6 +263,7 @@ def processStateData(String payload) {
         lastResponse("MQTT Exception")
     }
 }
+
 
 /* ============================== Utilities ============================= */
 def reset() {
