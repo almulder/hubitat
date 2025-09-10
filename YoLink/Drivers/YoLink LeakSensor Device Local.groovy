@@ -2,11 +2,12 @@
  *  YoLink™ Leak Sensor (Local API Edition)
  *  © 2025 Albert Mulder
  *
+ *  1.1.1 - Harden the beginning of processStateData(String payload) to coerce/guard data and loraInfo before dereferencing.
  *  1.1.0 - Initial working driver
  */
 import groovy.json.JsonSlurper
 
-def clientVersion() { "1.1.0-LS-local" }
+def clientVersion() { "1.1.1-LS-local" }
 def copyright()     { "© 2025 Albert Mulder" }
 def driverName()    { "YoLink™ Leak Sensor (Local API Edition)" }
 
@@ -214,38 +215,33 @@ def processStateData(String payload) {
         if (!root?.deviceId || state.devId != root.deviceId) return
         rememberState("online", "true")
 
-        def data = root?.data ?: [:]
-        def lora = data?.loraInfo ?: [:]
+        // Normalize data/lora
+        def dataRaw = root?.data
+        Map data = (dataRaw instanceof Map) ? dataRaw : [ state: (dataRaw?.toString()) ]
+        Map lora = (data?.loraInfo instanceof Map) ? (Map) data.loraInfo : [:]
 
-        // Event types "LeakSensor.Alert", "LeakSensor.Report", "LeakSensor.StatusChange"
         String eventType = (root?.event ?: "").replace("${state.type}.", "")
 
-        // Common fields (MQTT often flattens state)
         String rawState   = (data?.state instanceof String) ? data.state : data?.state?.state
         String waterState = (rawState == "alert") ? "wet" : "dry"
         String swState    = (waterState == "wet") ? "on" : "off"
 
-        Integer batt4     = (data?.battery != null) ? (data.battery as Integer)
-                            : (data?.state?.battery as Integer)
-        Integer battery   = (batt4 != null) ? parent?.batterylevel(batt4 as String) : null
+        Integer batt4   = (data?.battery != null) ? (data.battery as Integer) : (data?.state?.battery as Integer)
+        Integer battery = (batt4 != null) ? parent?.batterylevel(batt4 as String) : null
 
-        String fw         = (data?.version ?: data?.state?.version)?.toUpperCase()
-        String bType      = (data?.batteryType ?: data?.state?.batteryType)
-        def    devTempC   = (data?.devTemperature != null) ? data.devTemperature
-                            : data?.state?.devTemperature
+        String fw       = (data?.version ?: data?.state?.version)?.toUpperCase()
+        String bType    = (data?.batteryType ?: data?.state?.batteryType)
+        def    devTempC = (data?.devTemperature != null) ? data.devTemperature : data?.state?.devTemperature
+        def    supportChange = (data?.supportChangeMode != null) ? data.supportChangeMode : data?.state?.supportChangeMode
 
-        def supportChange = (data?.supportChangeMode != null) ? data.supportChangeMode
-                            : data?.state?.supportChangeMode
+        def reportAt  = data?.reportAt
+        def changedAt = data?.stateChangedAt
 
-        def reportAt      = data?.reportAt
-        def changedAt     = data?.stateChangedAt
+        def signal     = lora?.signal
+        def gatewayId  = lora?.gatewayId
+        def gateways   = lora?.gateways
+        def devNetType = lora?.devNetType
 
-        def signal        = lora?.signal
-        def gatewayId     = lora?.gatewayId
-        def gateways      = lora?.gateways
-        def devNetType    = lora?.devNetType
-
-        // Emit
         rememberState("state", rawState)
         rememberState("water", waterState)
         rememberState("switch", swState)
@@ -277,6 +273,7 @@ def processStateData(String payload) {
         lastResponse("MQTT Exception")
     }
 }
+
 
 /* ============================== Utilities ============================= */
 def reset() {
